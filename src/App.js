@@ -1,21 +1,86 @@
-import React, { Component } from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React from 'react';
+import { Route } from 'react-router-dom';
+import Loadable from 'react-loadable';
 
-class App extends Component {
+import path from 'path';
+
+import * as BooksAPI from './BooksAPI';
+
+import Home from './Components/Home';
+import SearchPage from './Components/SearchPage';
+import Loading from './Components/Loading';
+
+let loadableBookDetails = Loadable({
+  loader: () => import('./Components/BookDetails'),
+  loading: Loading,
+})
+
+class BooksApp extends React.Component {
+  constructor(props) {
+    super(props);
+    this.loadList = this.loadList.bind(this);
+    // Bind book status to this component so that they can be passed down to children
+    this.handleBookStatusUpdate = this.handleBookStatusUpdate.bind(this);
+  }
+
+  state = {
+    // List of books on shelves
+    // We use this to generate home page view and change search results' statuses
+    bookList: [],
+  }
+
+  componentDidMount() {
+    // Load the active shelves whenever component is mounted
+    this.loadList();
+  }
+
+  loadList() {
+    // query API for active shelves and add the books into state
+    BooksAPI.getAll().then((books) => this.setState({ bookList: books }));
+  }
+
+  handleBookStatusUpdate(book, shelf) {
+    // Function that gets passed down to children Components
+    // Takes book and shelf it needs to go on and makes request to server
+    // If request is successful it refreshes the book list in our application with the new data
+    BooksAPI.update(book, shelf).then((res) => res && this.loadList()
+  );
+  }
+
   render() {
     return (
-      <div className="App">
-        <header className="App-header">
-          <img src={logo} className="App-logo" alt="logo" />
-          <h1 className="App-title">Welcome to Reactsss</h1>
-        </header>
-        <p className="App-intro">
-          To get started, edit <code>src/App.js</code> and save to reload.
-        </p>
+      <div className='app'>
+        {/* Search Route */}
+        <Route
+          path='/search'
+          render={ () => (
+            <SearchPage
+              handleBookStatusUpdate={ this.handleBookStatusUpdate }
+              books={ this.state.bookList }
+            />
+        ) }
+        />
+
+        {/* Book Details Route */}
+        <Route
+          path='/details/:bookId'
+          component={loadableBookDetails}
+        />
+
+        {/* Home Page Route */}
+        <Route
+          path='/'
+          exact={ true }
+          render={ () => (
+            <Home
+              handleBookStatusUpdate={ this.handleBookStatusUpdate }
+              books={ this.state.bookList }
+            />
+        ) }
+        />
       </div>
     );
   }
 }
 
-export default App;
+export default BooksApp;
